@@ -173,3 +173,5 @@ export const bankDefinitions: { [contractName: string]: BankInfo } = {
     closedForStaking: false,
   },
 };
+
+export default configurations[process.env.NODE_ENV || 'development'];
