@@ -15,7 +15,7 @@ import moment from 'moment';
 import { parseUnits } from 'ethers/lib/utils';
 import { FTM_TICKER, SPOOKY_ROUTER_ADDR, TOMB_TICKER } from '../utils/constants';
 /**
- * An API module of Apex Finance contracts.
+ * An API module of Catacombs Finance contracts.
  * All contract-interacting domain logic should be defined in here.
  */
 export class TombFinance {
@@ -28,9 +28,9 @@ export class TombFinance {
   masonryVersionOfUser?: string;
 
   TOMBWFTM_LP: Contract;
-  APEX: ERC20;
-  ASHARE: ERC20;
-  ABOND: ERC20;
+  CATACOMBS: ERC20;
+  CSHARE: ERC20;
+  CBOND: ERC20;
   FTM: ERC20;
 
   constructor(cfg: Configuration) {
@@ -46,13 +46,13 @@ export class TombFinance {
     for (const [symbol, [address, decimal]] of Object.entries(externalTokens)) {
       this.externalTokens[symbol] = new ERC20(address, provider, symbol, decimal);
     }
-    this.APEX = new ERC20(deployments.tomb.address, provider, 'APEX');
-    this.ASHARE = new ERC20(deployments.tShare.address, provider, 'ASHARE');
-    this.ABOND = new ERC20(deployments.tBond.address, provider, 'ABOND');
+    this.CATACOMBS = new ERC20(deployments.tomb.address, provider, 'CATACOMBS');
+    this.CSHARE = new ERC20(deployments.tShare.address, provider, 'CSHARE');
+    this.CBOND = new ERC20(deployments.tBond.address, provider, 'CBOND');
     this.FTM = this.externalTokens['WFTM'];
 
     // Uniswap V2 Pair
-    this.TOMBWFTM_LP = new Contract(externalTokens['APEX-FTM-LP'][0], IUniswapV2PairABI, provider);
+    this.TOMBWFTM_LP = new Contract(externalTokens['CATACOMBS-FTM-LP'][0], IUniswapV2PairABI, provider);
 
     this.config = cfg;
     this.provider = provider;
@@ -69,7 +69,7 @@ export class TombFinance {
     for (const [name, contract] of Object.entries(this.contracts)) {
       this.contracts[name] = contract.connect(this.signer);
     }
-    const tokens = [this.APEX, this.ASHARE, this.ABOND, ...Object.values(this.externalTokens)];
+    const tokens = [this.CATACOMBS, this.CSHARE, this.CBOND, ...Object.values(this.externalTokens)];
     for (const token of tokens) {
       token.connect(this.signer);
     }
@@ -94,24 +94,24 @@ export class TombFinance {
   //===================================================================
 
   async getTombStat(): Promise<TokenStat> {
-    const { ApexFtmRewardPool, ApexFtmLPApexRewardPool, ApexFtmLPApexRewardPoolOld } = this.contracts;
-    const supply = await this.APEX.totalSupply();
-    const tombRewardPoolSupply = await this.APEX.balanceOf(ApexFtmRewardPool.address);
-    const tombRewardPoolSupply2 = await this.APEX.balanceOf(ApexFtmLPApexRewardPool.address);
-    // const tombRewardPoolSupplyOld = await this.APEX.balanceOf(ApexFtmLPApexRewardPoolOld.address);
+    const { CATACOMBSFtmRewardPool, CatacombsFtmLPCatacombsRewardPool, CatacombsFtmLPCatacombsRewardPoolOld } = this.contracts;
+    const supply = await this.CATACOMBS.totalSupply();
+    const tombRewardPoolSupply = await this.CATACOMBS.balanceOf(CatacombsFtmRewardPool.address);
+    const tombRewardPoolSupply2 = await this.CATACOMBS.balanceOf(CatacombsFtmLPCatacombsRewardPool.address);
+    // const tombRewardPoolSupplyOld = await this.CATACOMBS.balanceOf(CatacombsFtmLPCatacombsRewardPoolOld.address);
     const tombCirculatingSupply = supply
       .sub(tombRewardPoolSupply)
       .sub(tombRewardPoolSupply2);
       // .sub(tombRewardPoolSupplyOld);
-    const priceInFTM = await this.getTokenPriceFromPancakeswap(this.APEX);
+    const priceInFTM = await this.getTokenPriceFromPancakeswap(this.CATACOMBS);
     const priceOfOneFTM = await this.getWFTMPriceFromPancakeswap();
     const priceOfTombInDollars = (Number(priceInFTM) * Number(priceOfOneFTM)).toFixed(2);
 
     return {
       tokenInFtm: priceInFTM,
       priceInDollars: priceOfTombInDollars,
-      totalSupply: getDisplayBalance(supply, this.APEX.decimal, 0),
-      circulatingSupply: getDisplayBalance(tombCirculatingSupply, this.APEX.decimal, 0),
+      totalSupply: getDisplayBalance(supply, this.CATACOMBS.decimal, 0),
+      circulatingSupply: getDisplayBalance(tombCirculatingSupply, this.CATACOMBS.decimal, 0),
     };
   }
 
@@ -124,8 +124,8 @@ export class TombFinance {
     const lpToken = this.externalTokens[name];
     const lpTokenSupplyBN = await lpToken.totalSupply();
     const lpTokenSupply = getDisplayBalance(lpTokenSupplyBN, 18);
-    const token0 = name.startsWith('APEX') ? this.APEX : this.ASHARE;
-    const isTomb = name.startsWith('APEX');
+    const token0 = name.startsWith('CATACOMBS') ? this.CATACOMBS : this.CSHARE;
+    const isTomb = name.startsWith('CATACOMBS');
     const tokenAmountBN = await token0.balanceOf(lpToken.address);
     const tokenAmount = getDisplayBalance(tokenAmountBN, 18);
 
@@ -146,8 +146,8 @@ export class TombFinance {
   }
 
   /**
-   * Use this method to get price for Apex
-   * @returns TokenStat for ABOND
+   * Use this method to get price for Catacombs
+   * @returns TokenStat for CBOND
    * priceInFTM
    * priceInDollars
    * TotalSupply
@@ -160,7 +160,7 @@ export class TombFinance {
     const modifier = bondTombRatioBN / 1e18 > 1 ? bondTombRatioBN / 1e18 : 1;
     const bondPriceInFTM = (Number(tombStat.tokenInFtm) * modifier).toFixed(2);
     const priceOfTBondInDollars = (Number(tombStat.priceInDollars) * modifier).toFixed(2);
-    const supply = await this.ABOND.displayedTotalSupply();
+    const supply = await this.CBOND.displayedTotalSupply();
     return {
       tokenInFtm: bondPriceInFTM,
       priceInDollars: priceOfTBondInDollars,
@@ -170,19 +170,19 @@ export class TombFinance {
   }
 
   /**
-   * @returns TokenStat for ASHARE
+   * @returns TokenStat for CSHARE
    * priceInFTM
    * priceInDollars
    * TotalSupply
    * CirculatingSupply (always equal to total supply for bonds)
    */
   async getShareStat(): Promise<TokenStat> {
-    const { ApexFtmLPAShareRewardPool } = this.contracts;
+    const { CatacombsFtmLPCShareRewardPool } = this.contracts;
 
-    const supply = await this.ASHARE.totalSupply();
+    const supply = await this.CSHARE.totalSupply();
 
-    const priceInFTM = await this.getTokenPriceFromPancakeswap(this.ASHARE);
-    const tombRewardPoolSupply = await this.ASHARE.balanceOf(ApexFtmLPAShareRewardPool.address);
+    const priceInFTM = await this.getTokenPriceFromPancakeswap(this.CSHARE);
+    const tombRewardPoolSupply = await this.CSHARE.balanceOf(CatacombsFtmLPCShareRewardPool.address);
     const tShareCirculatingSupply = supply.sub(tombRewardPoolSupply);
     const priceOfOneFTM = await this.getWFTMPriceFromPancakeswap();
     const priceOfSharesInDollars = (Number(priceInFTM) * Number(priceOfOneFTM)).toFixed(2);
@@ -190,34 +190,34 @@ export class TombFinance {
     return {
       tokenInFtm: priceInFTM,
       priceInDollars: priceOfSharesInDollars,
-      totalSupply: getDisplayBalance(supply, this.ASHARE.decimal, 0),
-      circulatingSupply: getDisplayBalance(tShareCirculatingSupply, this.ASHARE.decimal, 0),
+      totalSupply: getDisplayBalance(supply, this.CSHARE.decimal, 0),
+      circulatingSupply: getDisplayBalance(tShareCirculatingSupply, this.CSHARE.decimal, 0),
     };
   }
 
   async getTombStatInEstimatedTWAP(): Promise<TokenStat> {
-    const { SeigniorageOracle, ApexFtmRewardPool } = this.contracts;
-    const expectedPrice = await SeigniorageOracle.twap(this.APEX.address, ethers.utils.parseEther('1'));
+    const { SeigniorageOracle, CatacombsFtmRewardPool } = this.contracts;
+    const expectedPrice = await SeigniorageOracle.twap(this.CATACOMBS.address, ethers.utils.parseEther('1'));
 
-    const supply = await this.APEX.totalSupply();
-    const tombRewardPoolSupply = await this.APEX.balanceOf(ApexFtmRewardPool.address);
+    const supply = await this.CATACOMBS.totalSupply();
+    const tombRewardPoolSupply = await this.CATACOMBS.balanceOf(CatacombsFtmRewardPool.address);
     const tombCirculatingSupply = supply.sub(tombRewardPoolSupply);
     return {
       tokenInFtm: getDisplayBalance(expectedPrice),
       priceInDollars: getDisplayBalance(expectedPrice),
-      totalSupply: getDisplayBalance(supply, this.APEX.decimal, 0),
-      circulatingSupply: getDisplayBalance(tombCirculatingSupply, this.APEX.decimal, 0),
+      totalSupply: getDisplayBalance(supply, this.CATACOMBS.decimal, 0),
+      circulatingSupply: getDisplayBalance(tombCirculatingSupply, this.CATACOMBS.decimal, 0),
     };
   }
 
   async getTombPriceInLastTWAP(): Promise<BigNumber> {
     const { Treasury } = this.contracts;
-    return Treasury.getApexUpdatedPrice();
+    return Treasury.getCatacombsUpdatedPrice();
   }
 
   async getBondsPurchasable(): Promise<BigNumber> {
     const { Treasury } = this.contracts;
-    return Treasury.getBurnableApexLeft();
+    return Treasury.getBurnableCatacombsLeft();
   }
 
   /**
@@ -232,7 +232,7 @@ export class TombFinance {
     const depositTokenPrice = await this.getDepositTokenPriceInDollars(bank.depositTokenName, depositToken);
     const stakeInPool = await depositToken.balanceOf(bank.address);
     const TVL = Number(depositTokenPrice) * Number(getDisplayBalance(stakeInPool, depositToken.decimal));
-    const stat = bank.earnTokenName === 'APEX' ? await this.getTombStat() : await this.getShareStat();
+    const stat = bank.earnTokenName === 'CATACOMBS' ? await this.getTombStat() : await this.getShareStat();
     const tokenPerSecond = await this.getTokenPerSecond(
       bank.earnTokenName,
       bank.contract,
@@ -268,9 +268,9 @@ export class TombFinance {
     poolContract: Contract,
     depositTokenName: string,
   ) {
-    if (earnTokenName === 'APEX') {
-      if (!contractName.endsWith('ApexRewardPool')) {
-        const rewardPerSecond = await poolContract.apexPerSecond();
+    if (earnTokenName === 'CATACOMBS') {
+      if (!contractName.endsWith('CatacombsRewardPool')) {
+        const rewardPerSecond = await poolContract.catacombsPerSecond();
         if (depositTokenName === 'WFTM') {
           return rewardPerSecond.mul(6000).div(11000).div(24);
         } else if (depositTokenName === 'BOO') {
@@ -286,12 +286,12 @@ export class TombFinance {
       const startDateTime = new Date(poolStartTime.toNumber() * 1000);
       const FOUR_DAYS = 4 * 24 * 60 * 60 * 1000;
       if (Date.now() - startDateTime.getTime() > FOUR_DAYS) {
-        return await poolContract.epochApexPerSecond(1);
+        return await poolContract.epochCatacombsPerSecond(1);
       }
-      return await poolContract.epochApexPerSecond(0);
+      return await poolContract.epochCatacombsPerSecond(0);
     }
-    const rewardPerSecond = await poolContract.AsharePerSecond();
-    if (depositTokenName.startsWith('APEX')) {
+    const rewardPerSecond = await poolContract.CsharePerSecond();
+    if (depositTokenName.startsWith('CATACOMBS')) {
       return rewardPerSecond.mul(1000).div(2500);
     } else {
       return rewardPerSecond.mul(1500).div(2500);
@@ -312,10 +312,10 @@ export class TombFinance {
     if (tokenName === 'WFTM') {
       tokenPrice = priceOfOneFtmInDollars;
     } else {
-      if (tokenName === 'APEX-FTM-LP') {
-        tokenPrice = await this.getLPTokenPrice(token, this.APEX, true);
-      } else if (tokenName === 'ASHARE-FTM-LP') {
-        tokenPrice = await this.getLPTokenPrice(token, this.ASHARE, false);
+      if (tokenName === 'CATACOMBS-FTM-LP') {
+        tokenPrice = await this.getLPTokenPrice(token, this.CATACOMBS, true);
+      } else if (tokenName === 'CSHARE-FTM-LP') {
+        tokenPrice = await this.getLPTokenPrice(token, this.CSHARE, false);
       } else if (tokenName === 'SHIBA') {
         tokenPrice = await this.getTokenPriceFromSpiritswap(token);
       } else {
@@ -374,8 +374,8 @@ export class TombFinance {
     }
 
     const TSHAREPrice = (await this.getShareStat()).priceInDollars;
-    const masonrytShareBalanceOf = await this.ASHARE.balanceOf(this.currentMasonry().address);
-    const masonryTVL = Number(getDisplayBalance(masonrytShareBalanceOf, this.ASHARE.decimal)) * Number(TSHAREPrice);
+    const masonrytShareBalanceOf = await this.CSHARE.balanceOf(this.currentMasonry().address);
+    const masonryTVL = Number(getDisplayBalance(masonrytShareBalanceOf, this.CSHARE.decimal)) * Number(TSHAREPrice);
 
     return totalValue + masonryTVL;
   }
@@ -408,8 +408,8 @@ export class TombFinance {
   ): Promise<BigNumber> {
     const pool = this.contracts[poolName];
     try {
-      if (earnTokenName === 'APEX') {
-        return await pool.pendingAPEX(poolId, account);
+      if (earnTokenName === 'CATACOMBS') {
+        return await pool.pendingCATACOMBS(poolId, account);
       } else {
         return await pool.pendingShare(poolId, account);
       }
@@ -562,8 +562,8 @@ export class TombFinance {
 
     //Mgod formula
     const amountOfRewardsPerDay = epochRewardsPerShare * Number(TOMBPrice) * 4;
-    const masonrytShareBalanceOf = await this.ASHARE.balanceOf(Masonry.address);
-    const masonryTVL = Number(getDisplayBalance(masonrytShareBalanceOf, this.ASHARE.decimal)) * Number(TSHAREPrice);
+    const masonrytShareBalanceOf = await this.CSHARE.balanceOf(Masonry.address);
+    const masonryTVL = Number(getDisplayBalance(masonrytShareBalanceOf, this.CSHARE.decimal)) * Number(TSHAREPrice);
     const realAPR = ((amountOfRewardsPerDay * 100) / masonryTVL) * 365;
     return realAPR;
   }
@@ -585,7 +585,7 @@ export class TombFinance {
     const Masonry = this.currentMasonry();
     const canWithdraw = await Masonry.canWithdraw(this.myAccount);
     const stakedAmount = await this.getStakedSharesOnMasonry();
-    const notStaked = Number(getDisplayBalance(stakedAmount, this.ASHARE.decimal)) === 0;
+    const notStaked = Number(getDisplayBalance(stakedAmount, this.CSHARE.decimal)) === 0;
     const result = notStaked ? true : canWithdraw;
     return result;
   }
@@ -603,7 +603,7 @@ export class TombFinance {
 
   async stakeShareToMasonry(amount: string): Promise<TransactionResponse> {
     if (this.isOldMasonryMember()) {
-      throw new Error("you're using old masonry. please withdraw and deposit the ASHARE again.");
+      throw new Error("you're using old masonry. please withdraw and deposit the CSHARE again.");
     }
     const Masonry = this.currentMasonry();
     return await Masonry.stake(decimalToBalance(amount));
@@ -722,14 +722,14 @@ export class TombFinance {
     if (ethereum && ethereum.networkVersion === config.chainId.toString()) {
       let asset;
       let assetUrl;
-      if (assetName === 'APEX') {
-        asset = this.APEX;
+      if (assetName === 'CATACOMBS') {
+        asset = this.CATACOMBS;
         assetUrl = 'https://tomb.finance/presskit/tomb_icon_noBG.png';
-      } else if (assetName === 'ASHARE') {
-        asset = this.ASHARE;
+      } else if (assetName === 'CSHARE') {
+        asset = this.CSHARE;
         assetUrl = 'https://tomb.finance/presskit/tshare_icon_noBG.png';
-      } else if (assetName === 'ABOND') {
-        asset = this.ABOND;
+      } else if (assetName === 'CBOND') {
+        asset = this.CBOND;
         assetUrl = 'https://tomb.finance/presskit/tbond_icon_noBG.png';
       }
       await ethereum.request({
@@ -760,7 +760,7 @@ export class TombFinance {
     const { SpookyRouter } = this.contracts;
     const { _reserve0, _reserve1 } = await this.TOMBWFTM_LP.getReserves();
     let quote;
-    if (tokenName === 'APEX') {
+    if (tokenName === 'CATACOMBS') {
       quote = await SpookyRouter.quote(parseUnits(tokenAmount), _reserve1, _reserve0);
     } else {
       quote = await SpookyRouter.quote(parseUnits(tokenAmount), _reserve0, _reserve1);
@@ -848,7 +848,7 @@ export class TombFinance {
     if (tokenName === FTM_TICKER) {
       estimate = await zapper.estimateZapIn(lpToken.address, SPOOKY_ROUTER_ADDR, parseUnits(amount, 18));
     } else {
-      const token = tokenName === TOMB_TICKER ? this.APEX : this.ASHARE;
+      const token = tokenName === TOMB_TICKER ? this.CATACOMBS : this.CSHARE;
       estimate = await zapper.estimateZapInToken(
         token.address,
         lpToken.address,
@@ -867,7 +867,7 @@ export class TombFinance {
       };
       return await zapper.zapIn(lpToken.address, SPOOKY_ROUTER_ADDR, this.myAccount, overrides);
     } else {
-      const token = tokenName === TOMB_TICKER ? this.APEX : this.ASHARE;
+      const token = tokenName === TOMB_TICKER ? this.CATACOMBS : this.CSHARE;
       return await zapper.zapInToken(
         token.address,
         parseUnits(amount, 18),
