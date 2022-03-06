@@ -12,7 +12,7 @@ const useCashPriceInLastTWAP = () => {
   }, [tombFinance]);
 
   useEffect(() => {
-    fetchCashPrice().catch((err) => console.error(`Failed to fetch APEX price: ${err.stack}`));
+    fetchCashPrice().catch((err) => console.error(`Failed to fetch CATACOMBS price: ${err.stack}`));
     const refreshInterval = setInterval(fetchCashPrice, config.refreshInterval);
     return () => clearInterval(refreshInterval);
   }, [setPrice, tombFinance, fetchCashPrice]);
