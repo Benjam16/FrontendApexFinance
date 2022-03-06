@@ -19,9 +19,9 @@ export enum ApprovalState {
 // returns a variable indicating the state of the approval and a function which approves if necessary or early returns
 function useApproveTaxOffice(): [ApprovalState, () => Promise<void>] {
   const tombFinance = useTombFinance();
-  let token: ERC20 = tombFinance.APEX;
+  let token: ERC20 = tombFinance.CATACOMBS;
   // if (zappingToken === FTM_TICKER) token = tombFinance.FTM;
-  // else if (zappingToken === TOMB_TICKER) token = tombFinance.APEX;
+  // else if (zappingToken === TOMB_TICKER) token = tombFinance.CATACOMBS;
   // else if (zappingToken === TSHARE_TICKER) token = tombFinance.ASHARE;
   const pendingApproval = useHasPendingApproval(token.address, TAX_OFFICE_ADDR);
   const currentAllowance = useAllowance(token, TAX_OFFICE_ADDR, pendingApproval);
