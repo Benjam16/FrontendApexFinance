@@ -21,8 +21,8 @@ function useApproveZapper(zappingToken: string): [ApprovalState, () => Promise<v
   const tombFinance = useTombFinance();
   let token: ERC20;
   if (zappingToken === FTM_TICKER) token = tombFinance.FTM;
-  else if (zappingToken === TOMB_TICKER) token = tombFinance.APEX;
-  else if (zappingToken === TSHARE_TICKER) token = tombFinance.ASHARE;
+  else if (zappingToken === TOMB_TICKER) token = tombFinance.CATACOMBS;
+  else if (zappingToken === TSHARE_TICKER) token = tombFinance.CSHARE;
   const pendingApproval = useHasPendingApproval(token.address, ZAPPER_ROUTER_ADDR);
   const currentAllowance = useAllowance(token, ZAPPER_ROUTER_ADDR, pendingApproval);
 
